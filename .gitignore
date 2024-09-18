@@ -10,6 +10,9 @@ venv/
 instance/
 .webassets-cache
 
+# Environment variables
+.env
+
 # VS Code
 .vscode/
 

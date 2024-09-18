@@ -1,0 +1,61 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run tests
+      run: python -m unittest discover
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+    - uses: actions/checkout@v2
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    - name: Deploy to EC2
+      env:
+        EC2_HOST: ${{ secrets.EC2_HOST }}
+        EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+      run: |
+        # Update the instance
+        aws ec2 reboot-instances --instance-ids $EC2_INSTANCE_ID
+        
+        # Wait for the instance to be running
+        aws ec2 wait instance-running --instance-ids $EC2_INSTANCE_ID
+        
+        # Use AWS Systems Manager to run commands on the EC2 instance
+        aws ssm send-command \
+          --instance-ids $EC2_INSTANCE_ID \
+          --document-name "AWS-RunShellScript" \
+          --parameters 'commands=[
+            "cd /home/ubuntu/simple-server-deploy",
+            "git pull origin main",
+            "source venv/bin/activate",
+            "pip install -r requirements.txt",
+            "sudo systemctl restart simple-server"
+          ]' \
+          --output text
+        
+        echo "Deployment completed. You can access the API at http://$EC2_HOST:5000"
