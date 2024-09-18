@@ -1,6 +1,6 @@
 # Simple Server Deploy
 
-This project demonstrates a simple Hello World API using Flask, designed for automated deployment on an AWS EC2 instance with CI/CD using GitHub Actions.
+This project demonstrates a simple Hello World API using Flask, designed for automated deployment on an AWS EC2 instance with CI/CD using GitHub Actions. The server runs on port 5001.
 
 ## Local Setup
 
@@ -36,7 +36,7 @@ To run the application locally:
 python app.py
 ```
 
-The API will be available at `http://localhost:5000`.
+The API will be available at `http://localhost:5001`.
 
 ## Running Tests
 
@@ -46,9 +46,14 @@ To run the unit tests:
 python -m unittest discover
 ```
 
-## Automated EC2 Setup and Deployment
+## EC2 Setup and Deployment
 
-This project includes a script to automatically set up an EC2 instance and deploy the application. Here's how to use it:
+This project includes two scripts for EC2 setup and deployment:
+
+1. `setup_ec2.sh`: Sets up a new EC2 instance
+2. `deploy_to_ec2.sh`: Deploys the application to an existing EC2 instance
+
+### Setting Up a New EC2 Instance
 
 1. Ensure you have the AWS CLI installed and configured with your credentials.
 
@@ -58,36 +63,55 @@ This project includes a script to automatically set up an EC2 instance and deplo
    ./setup_ec2.sh
    ```
 
-3. If this is your first time running the script, it will create a `.env` file and prompt you for your AWS key pair name. This information will be stored in the `.env` file for future use.
+3. The script will:
+   - Create a `.env` file if it doesn't exist
+   - Prompt you for your AWS key pair name if it's not already in the `.env` file
+   - Create an EC2 instance and set up the necessary security group (opening ports 22 and 5001)
+   - Save the EC2 instance's public DNS and instance ID to the `.env` file
 
-4. The script will create an EC2 instance, set up the necessary security group, and configure the instance to run your Flask application.
+### Deploying to an Existing EC2 Instance
 
-5. After the script completes, it will output important information, including the EC2 instance's public DNS and instance ID. This information will also be saved in the `.env` file.
+1. Make sure you have run `setup_ec2.sh` at least once to create the `.env` file with the necessary EC2 information.
 
-6. Add the following secrets to your GitHub repository (Settings > Secrets):
-   - `EC2_HOST`: The public DNS of your EC2 instance (found in `.env`)
-   - `EC2_INSTANCE_ID`: The ID of your EC2 instance (found in `.env`)
-   - `AWS_ACCESS_KEY_ID`: Your AWS access key ID
-   - `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key
+2. Run the deployment script:
+   ```
+   chmod +x deploy_to_ec2.sh
+   ./deploy_to_ec2.sh
+   ```
+
+3. The script will:
+   - Use the EC2 instance information from the `.env` file
+   - Update the instance with the latest code from the repository
+   - Install dependencies and set up the Flask application as a system service
 
 ## CI/CD with GitHub Actions
 
 This project uses GitHub Actions for Continuous Integration and Continuous Deployment. The workflow does the following:
 
 1. Runs tests on every push and pull request to the main branch.
-2. If tests pass and the push is to the main branch, it deploys the application to the EC2 instance.
+2. If tests pass and the push is to the main branch, it deploys the application to the EC2 instance using the `deploy_to_ec2.sh` script.
 
-The deployment process is fully automated and doesn't require manual SSH access to the EC2 instance.
+To set up CI/CD:
+
+1. In your GitHub repository, go to Settings > Secrets and add the following secrets:
+   - `EC2_HOST`: The public DNS of your EC2 instance (from `.env`)
+   - `EC2_INSTANCE_ID`: The ID of your EC2 instance (from `.env`)
+   - `AWS_ACCESS_KEY_ID`: Your AWS access key ID
+   - `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key
+
+2. Push your code to the main branch of your GitHub repository.
+
+3. The GitHub Actions workflow will automatically run tests and deploy your application to the EC2 instance.
 
 ## Making Changes
 
-To make changes to the application:
+To make changes to your application:
 
 1. Modify the code as needed.
 2. Commit and push your changes to the main branch of the GitHub repository.
 3. The GitHub Actions workflow will automatically test and deploy your changes to the EC2 instance.
 
-You can access your deployed API at `http://your-ec2-public-dns:5000`, where `your-ec2-public-dns` is the public DNS of your EC2 instance (available in the EC2_HOST secret and `.env` file).
+You can access your deployed API at `http://your-ec2-public-dns:5001`, where `your-ec2-public-dns` is the public DNS of your EC2 instance (available in the EC2_HOST secret and `.env` file).
 
 ## Environment Variables
 

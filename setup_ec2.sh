@@ -43,7 +43,7 @@ SECURITY_GROUP_ID=$(aws ec2 create-security-group --group-name $SECURITY_GROUP_N
 # Configure security group
 echo "Configuring security group..."
 aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 22 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 5000 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 5001 --cidr 0.0.0.0/0
 
 # Launch EC2 instance
 echo "Launching EC2 instance..."
@@ -57,51 +57,9 @@ PUBLIC_DNS=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --output tex
 
 echo "Instance is running. Public DNS: $PUBLIC_DNS"
 
-# User data script to set up the instance
-USER_DATA=$(cat <<EOF
-#!/bin/bash
-apt-get update
-apt-get install -y python3-venv python3-pip
-git clone https://github.com/mazerakham/simple-server-deploy.git /home/ubuntu/simple-server-deploy
-chown -R ubuntu:ubuntu /home/ubuntu/simple-server-deploy
-cd /home/ubuntu/simple-server-deploy
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cat > /etc/systemd/system/simple-server.service <<EOL
-[Unit]
-Description=Simple Server Flask App
-After=network.target
-
-[Service]
-User=ubuntu
-WorkingDirectory=/home/ubuntu/simple-server-deploy
-ExecStart=/home/ubuntu/simple-server-deploy/venv/bin/python app.py
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOL
-systemctl enable simple-server
-systemctl start simple-server
-EOF
-)
-
-# Apply user data script to the instance
-echo "Applying user data script..."
-aws ec2 modify-instance-attribute --instance-id $INSTANCE_ID --attribute userData --value "$USER_DATA"
-
-echo "EC2 setup complete. You can access your server at: http://$PUBLIC_DNS:5000"
-echo "Instance ID: $INSTANCE_ID"
-echo "Security Group ID: $SECURITY_GROUP_ID"
-
-# Output the values as GitHub secrets
-echo "Add the following secrets to your GitHub repository:"
-echo "EC2_HOST: $PUBLIC_DNS"
-echo "EC2_INSTANCE_ID: $INSTANCE_ID"
-
 # Update .env file with new information
 echo "EC2_HOST=$PUBLIC_DNS" >> .env
 echo "EC2_INSTANCE_ID=$INSTANCE_ID" >> .env
 
 echo "Environment variables have been updated in .env file."
+echo "EC2 instance has been set up. You can now run ./deploy_to_ec2.sh to deploy your application."

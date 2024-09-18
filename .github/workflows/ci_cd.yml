@@ -39,23 +39,17 @@ jobs:
         EC2_HOST: ${{ secrets.EC2_HOST }}
         EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
       run: |
-        # Update the instance
-        aws ec2 reboot-instances --instance-ids $EC2_INSTANCE_ID
-        
-        # Wait for the instance to be running
-        aws ec2 wait instance-running --instance-ids $EC2_INSTANCE_ID
-        
-        # Use AWS Systems Manager to run commands on the EC2 instance
-        aws ssm send-command \
-          --instance-ids $EC2_INSTANCE_ID \
-          --document-name "AWS-RunShellScript" \
-          --parameters 'commands=[
-            "cd /home/ubuntu/simple-server-deploy",
-            "git pull origin main",
-            "source venv/bin/activate",
-            "pip install -r requirements.txt",
-            "sudo systemctl restart simple-server"
-          ]' \
-          --output text
-        
-        echo "Deployment completed. You can access the API at http://$EC2_HOST:5000"
+        echo "EC2_HOST=$EC2_HOST" >> .env
+        echo "EC2_INSTANCE_ID=$EC2_INSTANCE_ID" >> .env
+        chmod +x deploy_to_ec2.sh
+        ./deploy_to_ec2.sh
+    - name: Verify deployment
+      run: |
+        echo "Waiting for the server to start..."
+        sleep 30
+        if curl -s "http://${{ secrets.EC2_HOST }}:5001" | grep -q "Hello, World!"; then
+          echo "Deployment successful!"
+        else
+          echo "Deployment verification failed"
+          exit 1
+        fi

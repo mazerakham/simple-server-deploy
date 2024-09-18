@@ -13,4 +13,4 @@ pip3 install -r requirements.txt
 # Run the Flask app in the background
 nohup python3 app.py > output.log 2>&1 &
 
-echo "Deployment complete. API should be running on port 5000."
+echo "Deployment complete. API should be running on port 5001."
